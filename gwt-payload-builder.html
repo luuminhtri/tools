@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GWT-RPC Payload Builder</title>
+  <style>
+    :root { color-scheme: dark; --bg:#010302; --card:#070b09; --ink:#f1f5f3; --muted:#98a49e; --line:#1b2922; --blue:#32d583; --soft:#0c1711; --bad:#ff7b72; --ok:#46e69a; }
+    * { box-sizing:border-box }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif }
+    main { width:min(980px,calc(100% - 32px)); margin:32px auto 64px }
+    h1 { margin:0 0 6px; font-size:28px; letter-spacing:-.03em }
+    h2 { margin:0 0 16px; font-size:18px }
+    p { margin:0; color:var(--muted) }
+    .card { margin-top:18px; padding:22px; border:1px solid var(--line); border-radius:16px; background:var(--card); box-shadow:0 12px 36px rgba(0,0,0,.55) }
+    .config-card summary { cursor:pointer; list-style:none; font-size:18px; font-weight:700; user-select:none }
+    .config-card summary::-webkit-details-marker { display:none }
+    .config-card summary::after { content:'›'; float:right; color:var(--blue); font-size:24px; line-height:18px; transition:transform .16s ease }
+    .config-card[open] summary { margin-bottom:18px }
+    .config-card[open] summary::after { transform:rotate(90deg) }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px }
+    .wide { grid-column:1/-1 }
+    label { display:block; margin-bottom:6px; font-weight:650; font-size:13px }
+    input,textarea,select,button { font:inherit }
+    input,textarea,select { width:100%; border:1px solid #27352e; border-radius:9px; padding:10px 11px; color:var(--ink); background:#020504 }
+    input:focus,textarea:focus,select:focus { outline:2px solid rgba(50,213,131,.24); border-color:var(--blue) }
+    textarea { min-height:96px; resize:vertical; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px }
+    button,.button-link { display:inline-block; border:0; border-radius:9px; padding:10px 15px; background:var(--blue); color:#00150a; cursor:pointer; font-weight:750; box-shadow:none; text-decoration:none }
+    button:hover,.button-link:hover { background:#4ce394 }
+    button:disabled { cursor:wait; opacity:.55 }
+    button.secondary { border:1px solid #31463b; background:#0d1511; color:#d2ddd7; box-shadow:none }
+    button.secondary:hover { background:#15221b }
+    .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px }
+    .hint { margin-top:7px; font-size:13px }
+    .status { min-height:22px; margin-top:12px; font-weight:650 }
+    .status.error { color:var(--bad) }.status.ok { color:var(--ok) }
+    .param { display:grid; grid-template-columns:72px minmax(180px,1fr) 160px minmax(220px,1.4fr); gap:10px; align-items:end; padding:12px 0; border-top:1px solid var(--line) }
+    .param:first-child { border-top:0 }
+    .param .index { align-self:center; color:var(--muted); font-weight:700 }
+    .empty { padding:18px; border:1px dashed #293b32; border-radius:10px; background:#030705; color:var(--muted); text-align:center }
+    .result { min-height:240px }
+    #response { min-height:420px }
+    code { padding:2px 5px; border-radius:5px; background:#102118; color:#72e5aa; font-size:.9em }
+    .endpoint { overflow-wrap:anywhere; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px }
+    .page-nav{display:flex;gap:10px;margin:18px 0 24px}.page-nav a{padding:10px 16px;border:1px solid #28503d;border-radius:10px;color:var(--text);text-decoration:none;font-weight:750;background:#09140e}.page-nav a.active{background:var(--accent);border-color:var(--accent);color:#021008}
+    @media (max-width:760px) { .grid{grid-template-columns:1fr}.param{grid-template-columns:52px 1fr}.param .value{grid-column:1/-1}.wide{grid-column:auto} }
+  </style>
+</head>
+<body>
+<main>
+  <h1>GWT-RPC Payload Builder</h1>
+  <p>Tạo body từ chữ ký hoặc dán một GWT-RPC body có sẵn để gửi request.</p>
+  <nav class="page-nav"><a class="active" href="/gwt-payload-builder.html">Tạo payload</a><a href="/gwt-request-sender.html">Gửi body độc lập</a></nav>
+
+  <section class="card">
+    <h2>1. Chữ ký hàm</h2>
+    <label for="signature">Ví dụ</label>
+    <input id="signature" value="DataServiceStaff.getSystemLogs( I )" spellcheck="false">
+    <p class="hint">Chấp nhận cả dạng đầy đủ: <code>DataServiceStaff.getAdmissionCode()</code> hoặc chữ ký có generic lồng nhau.</p>
+    <div class="actions"><button id="analyze">Phân tích chữ ký</button></div>
+    <div id="parseStatus" class="status" aria-live="polite"></div>
+  </section>
+
+  <details class="card config-card">
+    <summary>2. Cấu hình</summary>
+    <div class="grid">
+      <div class="wide"><label for="module">Module base</label><input id="module" value="https://qldt.hust.edu.vn/soicteducationteacher/" spellcheck="false"></div>
+      <div><label for="service">Service đầy đủ</label><input id="service" spellcheck="false"></div>
+      <div><label for="method">Tên method</label><input id="method" spellcheck="false"></div>
+      <div class="wide"><label for="strongName">Strong name</label><input id="strongName" value="541683A10FC0F57E62614DA4077038BA" spellcheck="false"></div>
+      <div class="wide"><label>Endpoint gợi ý</label><div id="endpoint" class="endpoint"></div></div>
+    </div>
+  </details>
+
+  <section class="card">
+    <h2>3. Tham số</h2>
+    <div id="params"></div>
+    <div class="actions"><button id="build">Tạo full body</button><button id="send" class="secondary">Gửi request</button></div>
+    <div id="buildStatus" class="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <h2>4. Full body payload</h2>
+    <textarea id="result" class="result" spellcheck="false" placeholder="Dán nguyên GWT-RPC body vào đây…"></textarea>
+    <div class="actions"><button id="sendBody">Gửi body đã dán</button><button id="copy" class="secondary">Sao chép body</button><button id="download" class="secondary">Tải file .txt</button></div>
+    <p class="hint">Sau khi sửa body, hãy tính lại <code>X-Signature</code> bằng đúng endpoint và toàn bộ body này.</p>
+  </section>
+
+  <section class="card">
+    <h2>5. JSON trả về</h2>
+    <textarea id="response" class="result" readonly spellcheck="false" placeholder="Nhấn “Gửi request” để xem phản hồi."></textarea>
+    <div class="actions"><a id="openResponse" class="button-link" href="/gwt-json-viewer.html" target="_blank" rel="noopener">Mở JSON trong tab mới</a><button id="copyResponse" class="secondary">Sao chép JSON</button><button id="downloadResponse" class="secondary">Tải JSON</button></div>
+    <p class="hint">Tiền tố <code>//OK</code> được loại bỏ trước khi JSON được định dạng.</p>
+  </section>
+</main>
+<script src="/qldt-decoder.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const defaults = {
+    DataServiceStaff: { service:'com.soict.edu.core.client.service.DataServiceStaff', strong:'541683A10FC0F57E62614DA4077038BA', endpoint:'https://qldt.hust.edu.vn/soicteducationteacher/staff' },
+    DataService: { service:'com.soict.edu.core.client.service.DataService', strong:'C19DA7132AE2827C166A3A0F68289941', endpoint:'https://qldt.hust.edu.vn/soicteducationteacher/data' }
+  };
+  const typeAliases = {
+    String:'java.lang.String/2004016611', Long:'java.lang.Long/4227064769',
+    Integer:'java.lang.Integer/3438268394', Boolean:'java.lang.Boolean/476441737',
+    int:'I', boolean:'Z', long:'J', double:'D', float:'F', short:'S', byte:'B', char:'C'
+  };
+  let parsedTypes = [];
+  let lastRawResponse = '';
+
+  function splitTypes(text) {
+    if (!text.trim()) return [];
+    const out=[]; let start=0, angle=0, square=0, round=0;
+    for (let i=0;i<text.length;i++) {
+      const c=text[i];
+      if(c==='<') angle++; else if(c==='>') angle--; else if(c==='[') square++; else if(c===']') square--; else if(c==='(') round++; else if(c===')') round--;
+      else if(c===',' && angle===0 && square===0 && round===0) { out.push(text.slice(start,i).trim()); start=i+1; }
+      if(angle<0||square<0||round<0) throw new Error('Ngoặc trong danh sách kiểu không cân bằng.');
+    }
+    if(angle||square||round) throw new Error('Ngoặc trong danh sách kiểu không cân bằng.');
+    out.push(text.slice(start).trim());
+    if(out.some(x=>!x)) throw new Error('Có kiểu tham số bị trống.');
+    return out;
+  }
+
+  function parseSignature() {
+    const raw=$('signature').value.trim();
+    const match=raw.match(/^([\w.$]+)\.([\w$]+)\s*\(([\s\S]*)\)\s*$/);
+    if(!match) throw new Error('Chữ ký phải có dạng Service.method(Type1, Type2) hoặc Service.method().');
+    const serviceShort=match[1].split('.').pop(), method=match[2];
+    parsedTypes=splitTypes(match[3]);
+    const preset=defaults[serviceShort];
+    $('service').value=preset?.service || (match[1].includes('.') ? match[1] : `com.soict.edu.core.client.service.${serviceShort}`);
+    $('method').value=method;
+    if(preset) $('strongName').value=preset.strong;
+    $('endpoint').textContent=preset?.endpoint || 'Chưa xác định tự động — hãy kiểm tra endpoint của service.';
+    renderParams();
+    $('parseStatus').className='status ok';
+    $('parseStatus').textContent=parsedTypes.length ? `Đã nhận ${parsedTypes.length} tham số.` : 'Hàm này không có tham số — không cần điền giá trị.';
+    $('result').value=''; $('buildStatus').textContent='';
+  }
+
+  function defaultMode(type) {
+    const base=type.trim();
+    if(/^java\.util\.List<.*(?:java\.lang\.String\/2004016611|String).*>$/.test(base)) return 'string-list';
+    if(base==='boolean'||base==='java.lang.Boolean/476441737'||base==='Boolean') return 'boolean';
+    if(base==='long'||base==='J'||base==='Long'||base==='java.lang.Long/4227064769') return 'long';
+    if(base==='String'||base==='java.lang.String/2004016611') return 'string';
+    if(['I','int','D','double','F','float','S','short','B','byte','C','char'].includes(base)) return 'number';
+    return 'raw';
+  }
+
+  function resolvedType(type) {
+    const base=type.trim();
+    if(/^java\.util\.List<.*(?:java\.lang\.String\/2004016611|String).*>$/.test(base)) return 'java.util.List';
+    return typeAliases[base] || base;
+  }
+
+  function renderParams() {
+    const host=$('params'); host.replaceChildren();
+    if(!parsedTypes.length) { const div=document.createElement('div'); div.className='empty'; div.textContent='Không có tham số. Body sẽ kết thúc bằng số lượng tham số 0.'; host.append(div); return; }
+    parsedTypes.forEach((type,i) => {
+      const row=document.createElement('div'); row.className='param'; row.dataset.index=i;
+      const idx=document.createElement('div'); idx.className='index'; idx.textContent=`#${i+1}`;
+      const typeWrap=document.createElement('div');
+      typeWrap.innerHTML='<label>Kiểu GWT</label>';
+      const typeInput=document.createElement('input'); typeInput.className='ptype'; typeInput.value=resolvedType(type); typeInput.spellcheck=false; typeWrap.append(typeInput);
+      const modeWrap=document.createElement('div'); modeWrap.innerHTML='<label>Cách mã hóa</label>';
+      const select=document.createElement('select'); select.className='pmode';
+      [['string','String'],['string-list','Danh sách String'],['number','Số primitive'],['long','Long 64-bit'],['boolean','Boolean'],['raw','Token GWT thô'],['null','null']].forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;select.append(o)});
+      select.value=defaultMode(type); modeWrap.append(select);
+      const valueWrap=document.createElement('div'); valueWrap.className='value'; valueWrap.innerHTML='<label>Giá trị</label>';
+      const input=document.createElement('input'); input.className='pvalue'; input.spellcheck=false;
+      if(select.value==='boolean') input.value='false';
+      if(select.value==='raw') input.placeholder='Ví dụ: 0 hoặc chuỗi token serializer';
+      if(select.value==='string-list') input.placeholder='Mỗi mã một dòng hoặc cách nhau bằng dấu phẩy';
+      valueWrap.append(input);
+      select.addEventListener('change',()=>{ input.disabled=select.value==='null'; if(select.value==='boolean'&&!input.value) input.value='false'; });
+      row.append(idx,typeWrap,modeWrap,valueWrap); host.append(row);
+    });
+  }
+
+  function encodeLong(text) {
+    let n;
+    try { n=BigInt(text.trim()); } catch { throw new Error(`Long không hợp lệ: ${text}`); }
+    if(n<-(1n<<63n)||n>(1n<<63n)-1n) throw new Error('Long phải nằm trong miền signed 64-bit.');
+    n=BigInt.asUintN(64,n);
+    const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$_';
+    if(n===0n) return 'A';
+    let out=''; while(n){ out=alphabet[Number(n&63n)]+out; n>>=6n; } return out;
+  }
+
+  function parseStringList(text,index) {
+    const source=text.trim();
+    if(!source) return [];
+    if(source.startsWith('[')) {
+      let value;
+      try { value=JSON.parse(source); } catch { throw new Error(`Danh sách String #${index} không phải JSON hợp lệ.`); }
+      if(!Array.isArray(value)||value.some(item=>typeof item!=='string')) throw new Error(`Danh sách String #${index} phải là mảng các chuỗi.`);
+      return value;
+    }
+    return source.split(/[\n,]+/).map(item=>item.trim()).filter(Boolean);
+  }
+
+  function buildBody() {
+    const module=$('module').value.trim(), strong=$('strongName').value.trim(), service=$('service').value.trim(), method=$('method').value.trim();
+    if(!module||!strong||!service||!method) throw new Error('Module, strong name, service và method không được để trống.');
+    if(!/^[A-F0-9]{32}$/.test(strong)) throw new Error('Strong name phải gồm đúng 32 ký tự A–F/0–9.');
+    if(module.includes('|')||service.includes('|')||method.includes('|')) throw new Error('Trường cấu hình không được chứa dấu |.');
+    const strings=[module,strong,service,method];
+    const ref=value => { if(value.includes('|')) throw new Error('Chuỗi không được chứa dấu |.'); let i=strings.indexOf(value); if(i<0){strings.push(value);i=strings.length-1} return String(i+1); };
+    const declaredTypes=[];
+    const values=[];
+    document.querySelectorAll('.param').forEach((row,i)=>{
+      const type=row.querySelector('.ptype').value.trim(), mode=row.querySelector('.pmode').value, value=row.querySelector('.pvalue').value;
+      if(!type) throw new Error(`Thiếu kiểu của tham số #${i+1}.`);
+      declaredTypes.push(ref(type));
+      const isPrimitive=['I','J','Z','D','F','S','B','C'].includes(type);
+      if(mode==='null') values.push('0');
+      else if(mode==='string') values.push(ref(value));
+      else if(mode==='string-list') {
+        const items=parseStringList(value,i+1);
+        const listType='java.util.ArrayList/4159755760', stringType='java.lang.String/2004016611';
+        values.push(ref(listType),String(items.length));
+        items.forEach(item=>values.push(ref(stringType),ref(item)));
+      }
+      else if(mode==='long') {
+        if(!isPrimitive) values.push(ref(type));
+        values.push(encodeLong(value));
+      }
+      else if(mode==='boolean') {
+        const v=value.trim().toLowerCase();
+        if(!['true','false','1','0'].includes(v)) throw new Error(`Boolean #${i+1} phải là true, false, 1 hoặc 0.`);
+        if(!isPrimitive) values.push(ref(type));
+        values.push(v==='true'||v==='1'?'1':'0');
+      } else if(mode==='number') {
+        if(!value.trim()||value.includes('|')||!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value.trim())) throw new Error(`Số #${i+1} không hợp lệ.`);
+        if(!isPrimitive) values.push(ref(type));
+        values.push(value.trim());
+      } else {
+        if(!value.trim()) throw new Error(`Thiếu token GWT thô của tham số #${i+1}.`);
+        values.push(...value.trim().split('|').filter(Boolean));
+      }
+    });
+    const stream=['1','2','3','4',String(parsedTypes.length),...declaredTypes,...values];
+    return ['7','0',String(strings.length),...strings,...stream,''].join('|');
+  }
+
+  function beautifyResponse(raw) {
+    const withoutOk=raw.startsWith('//OK') ? raw.slice(4) : raw;
+    try { return JSON.stringify(JSON.parse(withoutOk),null,2); }
+    catch { return withoutOk; }
+  }
+
+  function openResponseViewer() {
+    if(!lastRawResponse) throw new Error('Chưa có phản hồi để mở.');
+    const popup=window.open('','_blank');
+    if(!popup) throw new Error('Trình duyệt đã chặn tab mới. Hãy cho phép popup cho localhost.');
+    const transportText=lastRawResponse.startsWith('//OK') ? lastRawResponse.slice(4) : lastRawResponse;
+    let transport, decoded, decodeError='';
+    try { transport=JSON.parse(transportText); } catch { transport=transportText; }
+    try { decoded=QLDTDecoder.decodeAny(lastRawResponse).result; }
+    catch(error) { decoded=transport; decodeError=error.message||String(error); }
+    const doc=popup.document;
+    doc.title=`${$('method').value||'GWT'} · JSON Viewer`;
+    doc.documentElement.lang='vi';
+    doc.body.innerHTML='';
+    const style=doc.createElement('style');
+    style.textContent=`
+      :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#010302;color:#f1f5f3;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+      header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid #1b2922;background:rgba(7,11,9,.96);backdrop-filter:blur(12px)}
+      h1{margin:0 auto 0 0;font:700 17px/1.2 ui-sans-serif,system-ui,sans-serif;color:#fff}button{border:1px solid #31463b;border-radius:8px;padding:8px 12px;background:#0d1511;color:#d2ddd7;cursor:pointer;font:650 13px ui-sans-serif,system-ui,sans-serif}button:hover,button.active{border-color:#32d583;background:#10251a;color:#66eba8}
+      main{padding:22px;max-width:1600px;margin:auto}pre{margin:0;padding:20px;border:1px solid #1b2922;border-radius:12px;background:#050806;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:2;box-shadow:0 16px 45px rgba(0,0,0,.45)}
+      .key{color:#7dd3fc}.string{color:#86efac}.number{color:#fbbf24}.boolean{color:#c4b5fd}.null{color:#94a3b8}.error{color:#ff7b72;margin:0 22px 14px}
+    `;
+    doc.head.append(style);
+    const header=doc.createElement('header');
+    const title=doc.createElement('h1'); title.textContent=`${$('service').value.split('.').pop()}.${$('method').value}`;
+    const decodedBtn=doc.createElement('button'); decodedBtn.textContent='Dữ liệu đã giải mã';
+    const rawBtn=doc.createElement('button'); rawBtn.textContent='JSON GWT gốc';
+    const copyBtn=doc.createElement('button'); copyBtn.textContent='Sao chép';
+    header.append(title,decodedBtn,rawBtn,copyBtn); doc.body.append(header);
+    if(decodeError){const error=doc.createElement('p');error.className='error';error.textContent=`Không giải mã được GWT: ${decodeError}`;doc.body.append(error)}
+    const main=doc.createElement('main'), pre=doc.createElement('pre'); main.append(pre); doc.body.append(main);
+    let current=decoded;
+    const escape=value=>value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const paint=value=>escape(JSON.stringify(value,null,2) ?? String(value)).replace(/(&quot;(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\&])*&quot;)(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g,(token,key)=>{let cls='number';if(/^&quot;/.test(token))cls=key?'key':'string';else if(token==='true'||token==='false')cls='boolean';else if(token==='null')cls='null';return `<span class="${cls}">${token}</span>`});
+    const show=(value,button)=>{current=value;pre.innerHTML=paint(value);decodedBtn.classList.toggle('active',button===decodedBtn);rawBtn.classList.toggle('active',button===rawBtn);window.scrollTo(0,0)};
+    decodedBtn.onclick=()=>show(decoded,decodedBtn); rawBtn.onclick=()=>show(transport,rawBtn);
+    copyBtn.onclick=async()=>{await navigator.clipboard.writeText(JSON.stringify(current,null,2));copyBtn.textContent='Đã sao chép';setTimeout(()=>copyBtn.textContent='Sao chép',1200)};
+    show(decoded,decodedBtn);
+  }
+
+  async function sendRequest() {
+    const body=buildBody();
+    $('result').value=body;
+    return sendBody(body);
+  }
+
+  function inferPastedBody(body) {
+    const parts=body.split('|');
+    const service=parts[5]||'';
+    const method=parts[6]||'';
+    if(service.endsWith('.DataServiceStaff')) return {endpoint:defaults.DataServiceStaff.endpoint,method:`DataServiceStaff.${method||'request'}`};
+    if(service.endsWith('.DataService')) return {endpoint:defaults.DataService.endpoint,method:`DataService.${method||'request'}`};
+    throw new Error('Không nhận ra DataService hoặc DataServiceStaff trong body.');
+  }
+
+  async function sendPastedBody() {
+    const body=$('result').value.trim();
+    if(!body) throw new Error('Hãy dán GWT-RPC body vào ô Full body payload.');
+    const inferred=inferPastedBody(body);
+    return sendBody(body,inferred.endpoint,inferred.method);
+  }
+
+  async function sendBody(body,endpoint=$('endpoint').textContent.trim(),methodName=`${$('service').value.split('.').pop()}.${$('method').value}`) {
+    if(!/^https:\/\/qldt\.hust\.edu\.vn\/soicteducationteacher\/(?:staff|data)$/.test(endpoint)) {
+      throw new Error('Endpoint chưa được xác định là /staff hoặc /data.');
+    }
+    $('send').disabled=true;
+    $('buildStatus').className='status';
+    $('buildStatus').textContent='Đang gửi request…';
+    try {
+      const response=await fetch('/api/gwt-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint,body})});
+      const payload=await response.json();
+      if(!response.ok) throw new Error(payload.error||`HTTP ${response.status}`);
+      lastRawResponse=payload.raw;
+      localStorage.setItem('qldt:lastRawResponse',payload.raw);
+      localStorage.setItem('qldt:lastMethod',methodName);
+      $('response').value=beautifyResponse(payload.raw);
+      $('buildStatus').className='status ok';
+      $('buildStatus').textContent='Request thành công. Đã bỏ //OK và định dạng JSON.';
+    } finally { $('send').disabled=false; }
+  }
+
+  $('analyze').addEventListener('click',()=>{ try{parseSignature()}catch(e){$('parseStatus').className='status error';$('parseStatus').textContent=e.message;} });
+  $('build').addEventListener('click',()=>{ try{$('result').value=buildBody();$('buildStatus').className='status ok';$('buildStatus').textContent='Đã tạo body. Chưa gửi request.';}catch(e){$('buildStatus').className='status error';$('buildStatus').textContent=e.message;} });
+  $('send').addEventListener('click',async()=>{ try{await sendRequest()}catch(e){$('buildStatus').className='status error';$('buildStatus').textContent=e.message;} });
+  $('sendBody').addEventListener('click',async()=>{ try{await sendPastedBody()}catch(e){$('buildStatus').className='status error';$('buildStatus').textContent=e.message;} });
+  $('copy').addEventListener('click',async()=>{ if(!$('result').value)return; await navigator.clipboard.writeText($('result').value); $('buildStatus').className='status ok';$('buildStatus').textContent='Đã sao chép body.'; });
+  $('download').addEventListener('click',()=>{ if(!$('result').value)return; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('result').value],{type:'text/plain'}));a.download=`${$('method').value||'gwt-payload'}.txt`;a.click();URL.revokeObjectURL(a.href); });
+  $('copyResponse').addEventListener('click',async()=>{ if(!$('response').value)return; await navigator.clipboard.writeText($('response').value); $('buildStatus').className='status ok';$('buildStatus').textContent='Đã sao chép JSON.'; });
+  $('downloadResponse').addEventListener('click',()=>{ if(!$('response').value)return; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('response').value],{type:'application/json'}));a.download=`${$('method').value||'gwt-response'}.json`;a.click();URL.revokeObjectURL(a.href); });
+  $('openResponse').addEventListener('click',event=>{ if(!lastRawResponse){event.preventDefault();$('buildStatus').className='status error';$('buildStatus').textContent='Chưa có phản hồi để mở.';} });
+  parseSignature();
+})();
+</script>
+</body>
+</html>

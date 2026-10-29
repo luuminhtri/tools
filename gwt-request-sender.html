@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gửi GWT-RPC body</title>
+  <style>
+    :root{color-scheme:dark;--bg:#010403;--card:#050a07;--line:#183428;--text:#eefdf4;--muted:#8cab99;--green:#43e092;--danger:#ff716d}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 Inter,system-ui,sans-serif}
+    main{max-width:1380px;margin:auto;padding:32px 22px 60px}h1{margin:0 0 6px;font-size:32px}p{color:var(--muted);margin:0 0 24px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;margin-top:18px;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+    label{display:block;font-weight:750;margin:0 0 8px}select,textarea,button{font:inherit}select,textarea{width:100%;color:var(--text);background:#010403;border:1px solid #28503d;border-radius:12px;outline:none}
+    select{height:50px;padding:0 14px;max-width:250px}textarea{padding:16px;resize:vertical;font:15px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:270px}
+    select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(67,224,146,.14)}
+    .row{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:end}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+    .page-nav{display:flex;gap:10px;margin:18px 0 24px}.page-nav a{padding:10px 16px;border:1px solid #28503d;border-radius:10px;color:var(--text);text-decoration:none;font-weight:750;background:#09140e}.page-nav a.active{background:var(--green);border-color:var(--green);color:#021008}
+    button,.button{display:inline-block;border:1px solid #28503d;border-radius:11px;padding:12px 20px;background:#0a1710;color:var(--text);font-weight:800;cursor:pointer;text-decoration:none}button.primary{background:var(--green);border-color:var(--green);color:#021008}button:disabled{opacity:.55;cursor:wait}
+    #response{min-height:390px}.status{min-height:25px;margin-top:12px;font-weight:700}.ok{color:var(--green)}.error{color:var(--danger)}
+    @media(max-width:700px){.row{grid-template-columns:1fr}main{padding:20px 12px}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Gửi GWT-RPC body</h1>
+  <p>Chọn endpoint, dán nguyên body rồi gửi.</p>
+  <nav class="page-nav"><a href="/gwt-payload-builder.html">Tạo payload</a><a class="active" href="/gwt-request-sender.html">Gửi body độc lập</a></nav>
+  <section class="card">
+    <div class="row">
+      <div><label for="endpoint">Endpoint</label><select id="endpoint"><option value="data">data</option><option value="staff">staff</option></select></div>
+      <div><label for="body">Full body</label><textarea id="body" autofocus spellcheck="false" placeholder="7|0|..."></textarea></div>
+    </div>
+    <div class="actions"><button id="send" class="primary">Gửi request</button><button id="clear">Xóa</button></div>
+    <div id="status" class="status" aria-live="polite"></div>
+  </section>
+  <section class="card">
+    <label for="response">JSON trả về</label>
+    <textarea id="response" readonly spellcheck="false"></textarea>
+    <div class="actions"><a id="open" class="button" href="/gwt-json-viewer.html" target="_blank" rel="noopener">Mở trong tab mới</a><button id="copy">Sao chép JSON</button></div>
+  </section>
+</main>
+<script src="/qldt-decoder.js"></script>
+<script>
+(()=>{
+  const $=id=>document.getElementById(id); let raw='';
+  const endpoint=()=>`https://qldt.hust.edu.vn/soicteducationteacher/${$('endpoint').value}`;
+  function formatted(value){
+    const text=value.startsWith('//OK')?value.slice(4):value;
+    try{return JSON.stringify(JSON.parse(text),null,2)}catch{return text}
+  }
+  async function send(){
+    const body=$('body').value.trim(); if(!body)throw new Error('Hãy dán body trước khi gửi.');
+    $('send').disabled=true;$('status').className='status';$('status').textContent='Đang gửi…';
+    try{
+      const res=await fetch('/api/gwt-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:endpoint(),body})});
+      const data=await res.json();if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);
+      raw=data.raw;$('response').value=formatted(raw);
+      localStorage.setItem('qldt:lastRawResponse',raw);localStorage.setItem('qldt:lastMethod',`GWT-RPC /${$('endpoint').value}`);
+      $('status').className='status ok';$('status').textContent='Gửi thành công.';
+    }finally{$('send').disabled=false}
+  }
+  $('send').onclick=()=>send().catch(e=>{$('status').className='status error';$('status').textContent=e.message});
+  $('clear').onclick=()=>{$('body').value='';$('response').value='';raw='';$('status').textContent='';$('body').focus()};
+  $('copy').onclick=async()=>{if($('response').value)await navigator.clipboard.writeText($('response').value)};
+  $('open').onclick=event=>{if(!raw){event.preventDefault();$('status').className='status error';$('status').textContent='Chưa có phản hồi để mở.'}};
+})();
+</script>
+</body>
+</html>
