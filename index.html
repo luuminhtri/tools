@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="description" content="Bộ công cụ GWT, payload và request — truy cập nhanh từ một nơi.">
+  <title>tools / Bộ công cụ</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b0e14; --panel:#121721; --line:#293141; --text:#edf1f8; --muted:#a2aec2; --accent:#bcafff; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse at 90% 0%, #25203d66, transparent 48%), var(--bg); color:var(--text); font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.6; }
+    a { color:inherit; }
+    .wrap { width:min(100% - 48px, 1040px); margin:auto; }
+    .skip { position:absolute; top:12px; left:12px; padding:10px 16px; background:var(--text); color:var(--bg); transform:translateY(-180%); z-index:2; }
+    .skip:focus { transform:translateY(0); }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:27px 0; border-bottom:1px solid var(--line); }
+    .brand { display:flex; align-items:center; gap:11px; font-size:20px; font-weight:750; letter-spacing:-.6px; }
+    .brand-mark { display:grid; place-items:center; width:35px; height:35px; border:1px solid #65568d; border-radius:10px; background:#231f34; color:var(--accent); font-family:monospace; font-size:17px; }
+    .top-note, .eyebrow, .count, .filename, footer { font-size:12px; }
+    .top-note { color:var(--muted); font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+    main { padding:64px 0 52px; }
+    .eyebrow { margin:0 0 15px; color:var(--accent); font-weight:650; text-transform:uppercase; letter-spacing:2px; }
+    h1 { margin:0 0 16px; font-size:clamp(32px,5.5vw,53px); line-height:1.16; font-weight:720; letter-spacing:-1.8px; }
+    .intro { max-width:580px; margin:0; color:var(--muted); font-size:16px; }
+    .section-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:43px 0 16px; }
+    .section-head h2 { margin:0; font-size:14px; font-weight:600; }
+    .count { border:1px solid var(--line); border-radius:20px; padding:3px 11px; color:var(--muted); }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+    .card { display:flex; flex-direction:column; padding:25px; background:linear-gradient(135deg,#ffffff03,transparent),var(--panel); border:1px solid var(--line); border-radius:16px; transition:border-color .18s,transform .18s; }
+    .card:hover { border-color:#716297; transform:translateY(-3px); }
+    .card-top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .icon { display:grid; place-items:center; width:42px; height:42px; border:1px solid #bcafff33; border-radius:11px; color:var(--accent); background:#bcafff0d; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:19px; font-weight:650; }
+    .tag { color:var(--muted); font-size:11px; letter-spacing:.7px; }
+    .card h3 { margin:20px 0 7px; font-size:20px; line-height:1.35; letter-spacing:-.5px; }
+    .description { margin:0 0 24px; color:var(--muted); font-size:14px; }
+    .card-bottom { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:auto; padding-top:17px; border-top:1px solid var(--line); }
+    .filename { color:var(--muted); font-family:ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; min-width:0; }
+    .open { display:inline-flex; flex-shrink:0; align-items:center; gap:12px; border:1px solid #76649f; border-radius:8px; padding:8px 13px; background:#bcafff13; text-decoration:none; color:#e3dcff; font-size:13px; font-weight:650; transition:background .18s; }
+    .open:hover { background:#bcafff2a; }
+    :focus-visible { outline:3px solid var(--accent); outline-offset:5px; }
+    footer { display:flex; justify-content:space-between; gap:16px; padding:22px 0 28px; border-top:1px solid var(--line); color:var(--muted); }
+    footer span:first-child { color:#d3c9f3; font-weight:600; }
+    @media(max-width:680px) {
+      .wrap { width:min(100% - 32px,1040px); }
+      main { padding-top:42px; }
+      .grid { grid-template-columns:1fr; gap:14px; }
+      .card { padding:22px; }
+      .top-note { font-size:11px; }
+      .section-head { margin-top:32px; }
+      footer { flex-direction:column; gap:4px; }
+    }
+    @media(max-width:360px) { .card-bottom { align-items:flex-start; flex-direction:column; } }
+    @media(prefers-reduced-motion:reduce) { *, *::before, *::after { transition:none!important; } .card:hover { transform:none; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#tools">Đến danh sách công cụ</a>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">&lt;/&gt;</span>tools<span style="color:var(--accent)">.</span></div>
+      <span class="top-note">/ developer toolkit</span>
+    </header>
+    <main>
+      <p class="eyebrow">Nhỏ gọn. Đúng việc.</p>
+      <h1>Công cụ cần dùng,<br>ngay trong tầm tay.</h1>
+      <p class="intro">Một nơi để truy cập các công cụ làm việc với GWT, payload và request. Chọn công cụ để bắt đầu.</p>
+      <section id="tools" aria-labelledby="tools-heading">
+        <div class="section-head"><h2 id="tools-heading">Tất cả công cụ</h2><span class="count">04 công cụ</span></div>
+        <div class="grid">
+          <article class="card">
+            <div class="card-top"><span class="icon" aria-hidden="true">{ }</span><span class="tag">GWT / BUILD</span></div>
+            <h3>GWT Payload Builder</h3>
+            <p class="description">Soạn và xây dựng payload cho các request GWT.</p>
+            <div class="card-bottom"><span class="filename">gwt-payload-builder.html</span><a class="open" href="./gwt-payload-builder.html" aria-label="Mở GWT Payload Builder">Mở tool <span aria-hidden="true">→</span></a></div>
+          </article>
+          <article class="card">
+            <div class="card-top"><span class="icon" aria-hidden="true">↗</span><span class="tag">GWT / SEND</span></div>
+            <h3>GWT Request Sender</h3>
+            <p class="description">Chuẩn bị và gửi request GWT từ giao diện công cụ.</p>
+            <div class="card-bottom"><span class="filename">gwt-request-sender.html</span><a class="open" href="./gwt-request-sender.html" aria-label="Mở GWT Request Sender">Mở tool <span aria-hidden="true">→</span></a></div>
+          </article>
+          <article class="card">
+            <div class="card-top"><span class="icon" aria-hidden="true">[ ]</span><span class="tag">PAYLOAD / LAB</span></div>
+            <h3>Payload Lab</h3>
+            <p class="description">Không gian soạn thảo và thử nghiệm các payload.</p>
+            <div class="card-bottom"><span class="filename">payload-lab.html</span><a class="open" href="./payload-lab.html" aria-label="Mở Payload Lab">Mở tool <span aria-hidden="true">→</span></a></div>
+          </article>
+          <article class="card">
+            <div class="card-top"><span class="icon" aria-hidden="true">≡</span><span class="tag">REQUEST / EDIT</span></div>
+            <h3>Request Editor</h3>
+            <p class="description">Soạn thảo và chỉnh sửa nội dung request trước khi sử dụng.</p>
+            <div class="card-bottom"><span class="filename">request-editor.html</span><a class="open" href="./request-editor.html" aria-label="Mở Request Editor">Mở tool <span aria-hidden="true">→</span></a></div>
+          </article>
+        </div>
+      </section>
+    </main>
+    <footer><span>tools / Bộ công cụ</span><span>GWT · Payload · Request</span></footer>
+  </div>
+</body>
+</html>
