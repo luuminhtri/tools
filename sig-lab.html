@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>X-Signature Lab</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top, #101820 0%, #090d11 45%, #050709 100%);
+            color: #d7ffe5;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        }
+
+        .container {
+            width: min(1000px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 40px 0 60px;
+        }
+
+        .header {
+            margin-bottom: 28px;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 30px;
+            color: #71ff9b;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            margin-top: 8px;
+            color: #7f9588;
+            font-size: 14px;
+        }
+
+        .card {
+            background: rgba(10, 16, 13, 0.92);
+            border: 1px solid #1d3b29;
+            border-radius: 12px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow:
+                0 0 0 1px rgba(58, 255, 111, 0.03),
+                0 18px 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .section-title {
+            margin: 0 0 18px;
+            color: #9effb8;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .result-header .section-title {
+            margin: 0;
+        }
+
+        .copy-button {
+            flex: 0 0 auto;
+            min-width: 82px;
+            padding: 7px 12px;
+            font-size: 12px;
+        }
+
+        .copy-button.copied {
+            background: #174225;
+            border-color: #71ff9b;
+            color: #bfffd0;
+        }
+
+        .copy-button.copy-error {
+            background: #351719;
+            border-color: #a94a50;
+            color: #ffabb0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            color: #87a591;
+            font-size: 13px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            border: 1px solid #25472f;
+            border-radius: 8px;
+            background: #070c09;
+            color: #d8ffe4;
+            padding: 12px 13px;
+            outline: none;
+            font-family: inherit;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: #58f58a;
+            box-shadow: 0 0 0 3px rgba(88, 245, 138, 0.08);
+        }
+
+        textarea {
+            min-height: 190px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .field-hint {
+            margin: 7px 0 0;
+            color: #7f9588;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .converter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .converter-grid .field {
+            min-width: 0;
+        }
+
+        .converter-message {
+            min-height: 18px;
+            margin: 0;
+            color: #ffabb0;
+            font-size: 12px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 1px solid #3b8551;
+            border-radius: 8px;
+            background: #102618;
+            color: #83ffa6;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #173a22;
+            border-color: #6aff91;
+        }
+
+        button.secondary {
+            background: #11171a;
+            border-color: #344047;
+            color: #aab7bd;
+        }
+
+        button.secondary:hover {
+            background: #192126;
+        }
+
+        .output {
+            position: relative;
+            background: #050906;
+            border: 1px solid #203729;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 58px;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+            color: #bfffd0;
+            line-height: 1.5;
+        }
+
+        .output.signature {
+            color: #72ff99;
+            font-weight: bold;
+        }
+
+        .status {
+            display: inline-block;
+            margin-bottom: 14px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: #0f2918;
+            border: 1px solid #255d35;
+            color: #6dff95;
+            font-size: 12px;
+        }
+
+        .footer {
+            margin-top: 25px;
+            text-align: center;
+            color: #4f6256;
+            font-size: 12px;
+        }
+
+        .prompt {
+            color: #65ff8b;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: min(100% - 20px, 1000px);
+                padding-top: 24px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 16px;
+            }
+
+            .converter-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="header">
+            <h1 class="title">
+                <span class="prompt">root@lab:~$</span> X-Signature
+            </h1>
+
+            <div class="subtitle">
+                Offline HMAC-SHA256 signature playground
+            </div>
+        </div>
+
+        <div class="card">
+
+            <div class="status">
+                ● LOCAL MODE
+            </div>
+
+            <h2 class="section-title">
+                Request Input
+            </h2>
+
+            <div class="field">
+                <label for="url">
+                    Target URL
+                </label>
+
+                <input id="url" value="https://e.hust.edu.vn/soicteducationteacher/data">
+            </div>
+
+            <div class="field">
+                <label for="body">
+                    GWT-RPC Body
+                </label>
+
+                <textarea id="body" placeholder="7|0|7|..."></textarea>
+            </div>
+
+            <div class="buttons">
+
+                <button onclick="generateSignature()">
+                    Generate Signature
+                </button>
+
+                <button class="secondary" onclick="clearAll()">
+                    Clear
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="result-header">
+                <h2 class="section-title">
+                    X-Signature
+                </h2>
+
+                <button class="copy-button secondary" type="button" onclick="copyResult('signature', this)"
+                    aria-label="Copy X-Signature">
+                    Copy
+                </button>
+            </div>
+
+            <div id="signature" class="output signature">Not generated yet.</div>
+
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">GWT Base64 ↔ Java long</h2>
+
+            <div class="converter-grid">
+                <div class="field">
+                    <label for="gwtEncoded">GWT Base64</label>
+                    <input id="gwtEncoded" type="text" spellcheck="false" autocomplete="off"
+                        placeholder="Ví dụ: QsjpuQAAB">
+                    <p class="field-hint">Dùng bảng ký tự A–Z, a–z, 0–9, $ và _.</p>
+                </div>
+
+                <div class="field">
+                    <label for="gwtLong">Java long (số thập phân)</label>
+                    <input id="gwtLong" type="text" inputmode="numeric" spellcheck="false"
+                        autocomplete="off" placeholder="Số nguyên có dấu 64 bit">
+                    <p class="field-hint">Phạm vi: −2⁶³ đến 2⁶³ − 1.</p>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button type="button" onclick="decodeGwtLong()">Decode → long</button>
+                <button type="button" onclick="encodeGwtLong()">Encode → GWT</button>
+                <button class="secondary" type="button" onclick="clearGwtLong()">Clear</button>
+            </div>
+            <p id="gwtMessage" class="converter-message" role="alert" aria-live="polite"></p>
+        </div>
+
+
+        <div class="footer">
+            X-Signature Lab · Offline Debug Utility
+        </div>
+
+    </div>
+
+
+    <script>
+
+        const SIGNING_KEY = "KUHLwk7Y64hRMALR949qEf2mBzSikG9s";
+        const GWT_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$_";
+        const JAVA_LONG_MIN = -(1n << 63n);
+        const JAVA_LONG_MAX = (1n << 63n) - 1n;
+
+        function decodeGwtBase64(encoded) {
+            if (!encoded) {
+                throw new Error("Nhập chuỗi GWT Base64 trước.");
+            }
+
+            let value = 0n;
+            for (const char of encoded) {
+                const digit = GWT_ALPHABET.indexOf(char);
+                if (digit < 0) {
+                    throw new Error(`Ký tự GWT Base64 không hợp lệ: ${char}`);
+                }
+                value = BigInt.asUintN(64, (value << 6n) | BigInt(digit));
+            }
+
+            return BigInt.asIntN(64, value);
+        }
+
+        function encodeGwtBase64(value) {
+            if (value < JAVA_LONG_MIN || value > JAVA_LONG_MAX) {
+                throw new Error("Java long phải nằm trong phạm vi −2⁶³ đến 2⁶³ − 1.");
+            }
+
+            let unsigned = BigInt.asUintN(64, value);
+            let encoded = "";
+            do {
+                encoded = GWT_ALPHABET[Number(unsigned & 63n)] + encoded;
+                unsigned >>= 6n;
+            } while (unsigned > 0n);
+
+            return encoded;
+        }
+
+        function decodeGwtLong() {
+            const input = document.getElementById("gwtEncoded");
+            const message = document.getElementById("gwtMessage");
+            try {
+                document.getElementById("gwtLong").value = decodeGwtBase64(input.value.trim()).toString();
+                message.textContent = "";
+            } catch (error) {
+                document.getElementById("gwtLong").value = "";
+                message.textContent = error.message;
+            }
+        }
+
+        function encodeGwtLong() {
+            const input = document.getElementById("gwtLong");
+            const message = document.getElementById("gwtMessage");
+            const decimal = input.value.trim();
+            try {
+                if (!/^[+-]?\d+$/.test(decimal)) {
+                    throw new Error("Nhập một số nguyên thập phân hợp lệ.");
+                }
+                document.getElementById("gwtEncoded").value = encodeGwtBase64(BigInt(decimal));
+                message.textContent = "";
+            } catch (error) {
+                document.getElementById("gwtEncoded").value = "";
+                message.textContent = error.message;
+            }
+        }
+
+        function clearGwtLong() {
+            document.getElementById("gwtEncoded").value = "";
+            document.getElementById("gwtLong").value = "";
+            document.getElementById("gwtMessage").textContent = "";
+        }
+
+        function buildCanonical(url, body) {
+
+            const parts = [];
+
+            let uri = url.replace(
+                /^https?:\/\/[^/]+/,
+                ""
+            );
+
+            if (!uri) {
+                uri = "/";
+            }
+
+            parts.push(
+                "uri=" + uri
+            );
+
+
+            if (body) {
+
+                parts.push(
+                    "data-rpc=" + body
+                );
+
+            }
+
+
+            const qIndex =
+                url.indexOf("?");
+
+
+            if (qIndex >= 0) {
+
+                const query =
+                    url.slice(qIndex + 1);
+
+
+                if (query) {
+
+                    parts.push(
+                        ...query.split("&")
+                    );
+
+                }
+
+            }
+
+
+            parts.sort();
+
+
+            return parts.join("&");
+        }
+
+
+
+        function generateSignature() {
+
+            const url = document
+                .getElementById("url")
+                .value
+                .trim();
+
+
+            const body =
+                document
+                    .getElementById("body")
+                    .value;
+
+
+            const key = SIGNING_KEY;
+
+
+            if (!url) {
+
+                alert("Nhập URL trước.");
+
+                return;
+
+            }
+
+
+            const canonical =
+                buildCanonical(
+                    url,
+                    body
+                );
+
+
+            const hmac =
+                CryptoJS.HmacSHA256(
+                    canonical,
+                    key
+                );
+
+
+            const signature =
+                CryptoJS.enc.Base64.stringify(
+                    hmac
+                );
+
+
+            document
+                .getElementById("signature")
+                .textContent =
+                signature;
+
+        }
+
+
+
+        function clearAll() {
+
+            document
+                .getElementById("body")
+                .value = "";
+
+
+            document
+                .getElementById("signature")
+                .textContent =
+                "Not generated yet.";
+
+        }
+
+
+
+        async function copyResult(elementId, button) {
+
+            const text = document
+                .getElementById(elementId)
+                .textContent;
+
+            try {
+
+                if (navigator.clipboard && window.isSecureContext) {
+
+                    await navigator.clipboard.writeText(text);
+
+                } else {
+
+                    fallbackCopyText(text);
+
+                }
+
+                showCopyFeedback(button, "Copied!", "copied");
+
+            } catch (error) {
+
+                try {
+
+                    fallbackCopyText(text);
+                    showCopyFeedback(button, "Copied!", "copied");
+
+                } catch (fallbackError) {
+
+                    showCopyFeedback(button, "Copy failed", "copy-error");
+
+                }
+
+            }
+
+        }
+
+
+
+        function fallbackCopyText(text) {
+
+            const textarea = document.createElement("textarea");
+
+            textarea.value = text;
+            textarea.setAttribute("readonly", "");
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            textarea.style.pointerEvents = "none";
+
+            document.body.appendChild(textarea);
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+
+            const copied = document.execCommand("copy");
+
+            document.body.removeChild(textarea);
+
+            if (!copied) {
+                throw new Error("Copy command was rejected.");
+            }
+
+        }
+
+
+
+        function showCopyFeedback(button, message, stateClass) {
+
+            window.clearTimeout(button.copyFeedbackTimer);
+
+            button.textContent = message;
+            button.classList.remove("copied", "copy-error");
+            button.classList.add(stateClass);
+
+            button.copyFeedbackTimer = window.setTimeout(function () {
+
+                button.textContent = "Copy";
+                button.classList.remove("copied", "copy-error");
+
+            }, 1400);
+
+        }
+
+    </script>
+
+</body>
+
+</html>
