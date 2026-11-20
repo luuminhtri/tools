@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiểm tra SHA-256 — Lab local</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f5f7fb; --card:#fff; --text:#172033; --muted:#667085; --line:#d9dee8; --accent:#2563eb; --ok:#08783e; --bad:#a33131; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#10131a; --card:#181d27; --text:#eef2f8; --muted:#9ca8ba; --line:#343c4b; --accent:#76a8ff; --ok:#68d391; --bad:#ff9191; } }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(760px,calc(100% - 32px)); margin:48px auto; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; box-shadow:0 8px 30px rgba(15,23,42,.06); }
+    h1 { margin:0 0 6px; font-size:clamp(24px,5vw,32px); }
+    .intro,.note { color:var(--muted); }
+    label { display:block; font-weight:650; margin:22px 0 7px; }
+    input,textarea { width:100%; border:1px solid var(--line); border-radius:10px; padding:12px; background:transparent; color:var(--text); font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+    input:focus,textarea:focus { outline:3px solid color-mix(in srgb,var(--accent) 24%,transparent); border-color:var(--accent); }
+    textarea { min-height:170px; resize:vertical; }
+    .actions { display:flex; gap:10px; align-items:center; margin-top:18px; flex-wrap:wrap; }
+    button { border:0; border-radius:10px; padding:11px 18px; background:var(--accent); color:white; font-weight:700; cursor:pointer; }
+    button:disabled { opacity:.55; cursor:wait; }
+    #message { color:var(--bad); font-weight:650; }
+    #results { margin-top:22px; }
+    .result { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; padding:11px 0; border-top:1px solid var(--line); }
+    .candidate { overflow-wrap:anywhere; white-space:pre-wrap; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .status { font-weight:800; }
+    .match { color:var(--ok); } .no-match { color:var(--bad); }
+    .note { margin:22px 0 0; font-size:13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Kiểm tra SHA-256</h1>
+      <div class="intro">So sánh một hash với nhiều chuỗi thử — chạy hoàn toàn trên thiết bị của bạn.</div>
+
+      <label for="target">SHA-256 cần kiểm tra</label>
+      <input id="target" inputmode="text" autocomplete="off" spellcheck="false" maxlength="64" placeholder="64 ký tự hệ 16 (0–9, a–f)">
+
+      <label for="candidates">Candidate (mỗi dòng một chuỗi)</label>
+      <textarea id="candidates" spellcheck="false" placeholder="123456&#10;password&#10;hello"></textarea>
+
+      <div class="actions">
+        <button id="testButton" type="button">Test</button>
+        <span id="message" role="alert" aria-live="polite"></span>
+      </div>
+      <div id="results" aria-live="polite"></div>
+    </section>
+  </main>
+  <script>
+    const target = document.querySelector('#target');
+    const candidates = document.querySelector('#candidates');
+    const button = document.querySelector('#testButton');
+    const message = document.querySelector('#message');
+    const results = document.querySelector('#results');
+
+    async function sha256(text) {
+      const bytes = new TextEncoder().encode(text);
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    button.addEventListener('click', async () => {
+      message.textContent = '';
+      results.replaceChildren();
+      const expected = target.value.trim().toLowerCase();
+      if (!/^[0-9a-f]{64}$/.test(expected)) {
+        message.textContent = 'Hash không hợp lệ. Hãy nhập đúng 64 ký tự hệ 16.';
+        target.focus();
+        return;
+      }
+      const lines = candidates.value.replace(/\r/g, '').split('\n');
+      if (lines.length === 1 && lines[0] === '') {
+        message.textContent = 'Hãy nhập ít nhất một candidate.';
+        candidates.focus();
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Đang tính…';
+      try {
+        const hashes = await Promise.all(lines.map(sha256));
+        const fragment = document.createDocumentFragment();
+        let matchCount = 0;
+        lines.forEach((line, index) => {
+          if (hashes[index] !== expected) return;
+
+          matchCount++;
+          const row = document.createElement('div');
+          row.className = 'result';
+          const value = document.createElement('span');
+          value.className = 'candidate';
+          value.textContent = line === '' ? '(chuỗi rỗng)' : line;
+          const status = document.createElement('span');
+          status.className = 'status match';
+          status.textContent = 'MATCH';
+          row.append(value, status);
+          fragment.append(row);
+        });
+        if (matchCount > 0) {
+          results.append(fragment);
+        } else {
+          message.textContent = 'Không tìm thấy candidate khớp.';
+        }
+      } catch (error) {
+        message.textContent = 'Trình duyệt này không hỗ trợ Web Crypto API.';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Test';
+      }
+    });
+  </script>
+</body>
+</html>
