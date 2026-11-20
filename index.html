@@ -1,21 +1,126 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0b0e14">
-  <meta name="description" content="Bộ công cụ GWT, payload và request — truy cập nhanh từ một nơi.">
-  <title>tools / Bộ công cụ</title>
-
+  <title>Tools Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 20px;
+      background: #0b0e14;
+      color: #e6edf3;
+      font-family: system-ui, sans-serif;
+    }
+    main { max-width: 850px; margin: auto; }
+    h1 { margin-bottom: 6px; }
+    p { color: #8b949e; }
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      margin: 20px 0;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      background: #161b22;
+      color: white;
+      font: inherit;
+    }
+    input:focus {
+      outline: 2px solid #58a6ff;
+    }
+    #tools {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .tool {
+      padding: 20px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      color: #e6edf3;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+      transition: 0.2s;
+    }
+    .tool:hover {
+      border-color: #58a6ff;
+      transform: translateY(-2px);
+    }
+    .tool small {
+      display: block;
+      color: #8b949e;
+      margin-top: 8px;
+    }
+  </style>
 </head>
 <body>
-<ul>
-  <li><a href="gwt-payload-builder.html">gwt-payload-builder</a></li>
-  <li><a href="gwt-request-sender.html">gwt-request-sender</a></li>
-  <li><a href="payload-lab.html">payload-lab</a></li>
-  <li><a href="request-editor.html">request-editor</a></li>
-  <li><a href="sig-lab.html">sig-lab</a></li>
-</ul>
+<main>
+  <h1>🛠 Tools Dashboard</h1>
+  <p id="count">Đang tải công cụ...</p>
+
+  <input id="search" placeholder="🔍 Tìm kiếm công cụ...">
+  <div id="tools"></div>
+</main>
+
+<script>
+  let tools = [];
+
+  function render() {
+    const keyword = document.getElementById("search")
+      .value.toLowerCase().trim();
+
+    const filtered = tools.filter(name =>
+      name.toLowerCase().includes(keyword)
+    );
+
+    document.getElementById("count").textContent =
+      `Hiển thị ${filtered.length}/${tools.length} công cụ`;
+
+    const container = document.getElementById("tools");
+    container.replaceChildren();
+
+    for (const name of filtered) {
+      const link = document.createElement("a");
+      link.className = "tool";
+      link.href = encodeURI(name);
+
+      const title = document.createElement("strong");
+      title.textContent =
+        "🔧 " + name.replace(/\.html$/i, "");
+
+      const subtitle = document.createElement("small");
+      subtitle.textContent = name;
+
+      link.append(title, subtitle);
+      container.appendChild(link);
+    }
+  }
+
+  async function loadTools() {
+    try {
+      const res = await fetch("./tools.json", {
+        cache: "no-cache"
+      });
+
+      if (!res.ok) throw new Error("HTTP " + res.status);
+
+      tools = await res.json();
+      render();
+    } catch (err) {
+      document.getElementById("count").textContent =
+        "Không tải được tools.json";
+      console.error(err);
+    }
+  }
+
+  document.getElementById("search")
+    .addEventListener("input", render);
+
+  loadTools();
+</script>
 </body>
 </html>

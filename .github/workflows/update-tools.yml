@@ -1,0 +1,73 @@
+
+name: Update Tools & Deploy Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate tools.json
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          tools = sorted(
+              p.name
+              for p in Path(".").glob("*.html")
+              if p.name.lower() != "index.html"
+          )
+
+          Path("tools.json").write_text(
+              json.dumps(tools, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8"
+          )
+
+          print(f"Found {len(tools)} tools")
+          PY
+
+      - name: Commit tools.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add tools.json
+
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: auto update tools.json"
+            git push
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
